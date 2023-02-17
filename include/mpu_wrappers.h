@@ -118,6 +118,19 @@
             #define vQueueUnregisterQueue              MPU_vQueueUnregisterQueue
             #define pcQueueGetName                     MPU_pcQueueGetName
         #endif
+/* Privileged only wrappers for Queue APIs. These are needed so that
+ * the application can use opaque handles maintained in mpu_wrappers.c
+ * with all the APIs. */
+        #define xQueueGenericSendFromISR               MPU_xQueueGenericSendFromISR
+        #define xQueueGiveFromISR                      MPU_xQueueGiveFromISR
+        #define xQueuePeekFromISR                      MPU_xQueuePeekFromISR
+        #define xQueueReceiveFromISR                   MPU_xQueueReceiveFromISR
+        #define xQueueIsQueueEmptyFromISR              MPU_xQueueIsQueueEmptyFromISR
+        #define xQueueIsQueueFullFromISR               MPU_xQueueIsQueueFullFromISR
+        #define uxQueueMessagesWaitingFromISR          MPU_uxQueueMessagesWaitingFromISR
+        #define xQueueGetMutexHolderFromISR            MPU_xQueueGetMutexHolderFromISR
+        #define xQueueSelectFromSetFromISR             MPU_xQueueSelectFromSetFromISR
+
 
 /* Map standard timer.h API functions to the MPU equivalents. */
         #define pvTimerGetTimerID                      MPU_pvTimerGetTimerID
