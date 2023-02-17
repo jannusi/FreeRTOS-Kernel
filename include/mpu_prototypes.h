@@ -67,7 +67,6 @@ void MPU_vTaskPrioritySet( TaskHandle_t xTask,
                            UBaseType_t uxNewPriority ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskSuspend( TaskHandle_t xTaskToSuspend ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskResume( TaskHandle_t xTaskToResume ) FREERTOS_SYSTEM_CALL;
-void MPU_vTaskStartScheduler( void ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskSuspendAll( void ) FREERTOS_SYSTEM_CALL;
 BaseType_t MPU_xTaskResumeAll( void ) FREERTOS_SYSTEM_CALL;
 TickType_t MPU_xTaskGetTickCount( void ) FREERTOS_SYSTEM_CALL;
@@ -90,10 +89,12 @@ TaskHandle_t MPU_xTaskGetIdleTaskHandle( void ) FREERTOS_SYSTEM_CALL;
 UBaseType_t MPU_uxTaskGetSystemState( TaskStatus_t * const pxTaskStatusArray,
                                       const UBaseType_t uxArraySize,
                                       configRUN_TIME_COUNTER_TYPE * const pulTotalRunTime ) FREERTOS_SYSTEM_CALL;
-configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimeCounter( void ) FREERTOS_SYSTEM_CALL;
-configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimePercent( void ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskList( char * pcWriteBuffer ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskGetRunTimeStats( char * pcWriteBuffer ) FREERTOS_SYSTEM_CALL;
+configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetRunTimeCounter( const TaskHandle_t xTask ) FREERTOS_SYSTEM_CALL;
+configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetRunTimePercent( const TaskHandle_t xTask ) FREERTOS_SYSTEM_CALL;
+configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimeCounter( void ) FREERTOS_SYSTEM_CALL;
+configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimePercent( void ) FREERTOS_SYSTEM_CALL;
 BaseType_t MPU_xTaskGenericNotify( TaskHandle_t xTaskToNotify,
                                    UBaseType_t uxIndexToNotify,
                                    uint32_t ulValue,
@@ -112,14 +113,34 @@ BaseType_t MPU_xTaskGenericNotifyStateClear( TaskHandle_t xTask,
 uint32_t MPU_ulTaskGenericNotifyValueClear( TaskHandle_t xTask,
                                             UBaseType_t uxIndexToClear,
                                             uint32_t ulBitsToClear ) FREERTOS_SYSTEM_CALL;
-BaseType_t MPU_xTaskIncrementTick( void ) FREERTOS_SYSTEM_CALL;
-TaskHandle_t MPU_xTaskGetCurrentTaskHandle( void ) FREERTOS_SYSTEM_CALL;
 void MPU_vTaskSetTimeOutState( TimeOut_t * const pxTimeOut ) FREERTOS_SYSTEM_CALL;
 BaseType_t MPU_xTaskCheckForTimeOut( TimeOut_t * const pxTimeOut,
                                      TickType_t * const pxTicksToWait ) FREERTOS_SYSTEM_CALL;
-void MPU_vTaskMissedYield( void ) FREERTOS_SYSTEM_CALL;
-BaseType_t MPU_xTaskGetSchedulerState( void ) FREERTOS_SYSTEM_CALL;
 BaseType_t MPU_xTaskCatchUpTicks( TickType_t xTicksToCatchUp ) FREERTOS_SYSTEM_CALL;
+TaskHandle_t MPU_xTaskGetCurrentTaskHandle( void ) FREERTOS_SYSTEM_CALL;
+BaseType_t MPU_xTaskGetSchedulerState( void ) FREERTOS_SYSTEM_CALL;
+
+/* Privileged only wrappers for Task APIs. These are needed so that
+ * the application can use opaque handles maintained in mpu_wrappers.c
+ * with all the APIs. */
+BaseType_t MPU_xTaskCreateRestricted( const TaskParameters_t * const pxTaskDefinition,
+                                      TaskHandle_t * pxCreatedTask ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xTaskCreateRestrictedStatic( const TaskParameters_t * const pxTaskDefinition,
+                                            TaskHandle_t * pxCreatedTask ) PRIVILEGED_FUNCTION;
+void vTaskAllocateMPURegions( TaskHandle_t xTaskToModify,
+                              const MemoryRegion_t * const xRegions ) PRIVILEGED_FUNCTION;
+UBaseType_t MPU_uxTaskPriorityGetFromISR( const TaskHandle_t xTask ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xTaskResumeFromISR( TaskHandle_t xTaskToResume ) PRIVILEGED_FUNCTION;
+TaskHookFunction_t MPU_xTaskGetApplicationTaskTagFromISR( TaskHandle_t xTask ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xTaskGenericNotifyFromISR( TaskHandle_t xTaskToNotify,
+                                      UBaseType_t uxIndexToNotify,
+                                      uint32_t ulValue,
+                                      eNotifyAction eAction,
+                                      uint32_t * pulPreviousNotificationValue,
+                                      BaseType_t * pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
+void MPU_vTaskGenericNotifyGiveFromISR( TaskHandle_t xTaskToNotify,
+                                    UBaseType_t uxIndexToNotify,
+                                    BaseType_t * pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
 
 /* MPU versions of queue.h API functions. */
 BaseType_t MPU_xQueueGenericSend( QueueHandle_t xQueue,
@@ -190,7 +211,7 @@ BaseType_t MPU_xQueueReceiveFromISR( QueueHandle_t xQueue,
                                      void * const pvBuffer,
                                      BaseType_t * const pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
 BaseType_t MPU_xQueueIsQueueEmptyFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
-BaseType_t  MPU_xQueueIsQueueFullFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xQueueIsQueueFullFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
 UBaseType_t MPU_uxQueueMessagesWaitingFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
 TaskHandle_t MPU_xQueueGetMutexHolderFromISR( QueueHandle_t xSemaphore ) PRIVILEGED_FUNCTION;
 QueueSetMemberHandle_t MPU_xQueueSelectFromSetFromISR( QueueSetHandle_t xQueueSet,
