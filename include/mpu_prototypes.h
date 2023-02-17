@@ -175,6 +175,27 @@ void MPU_vQueueSetQueueNumber( QueueHandle_t xQueue,
 UBaseType_t MPU_uxQueueGetQueueNumber( QueueHandle_t xQueue ) FREERTOS_SYSTEM_CALL;
 uint8_t MPU_ucQueueGetQueueType( QueueHandle_t xQueue ) FREERTOS_SYSTEM_CALL;
 
+/* Privileged only wrappers for Queue APIs. These are needed so that
+ * the application can use opaque handles maintained in mpu_wrappers.c
+ * with all the APIs. */
+BaseType_t MPU_xQueueGenericSendFromISR( QueueHandle_t xQueue,
+                                         const void * const pvItemToQueue,
+                                         BaseType_t * const pxHigherPriorityTaskWoken,
+                                         const BaseType_t xCopyPosition ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xQueueGiveFromISR( QueueHandle_t xQueue,
+                                  BaseType_t * const pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xQueuePeekFromISR( QueueHandle_t xQueue,
+                                  void * const pvBuffer ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xQueueReceiveFromISR( QueueHandle_t xQueue,
+                                     void * const pvBuffer,
+                                     BaseType_t * const pxHigherPriorityTaskWoken ) PRIVILEGED_FUNCTION;
+BaseType_t MPU_xQueueIsQueueEmptyFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
+BaseType_t  MPU_xQueueIsQueueFullFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
+UBaseType_t MPU_uxQueueMessagesWaitingFromISR( const QueueHandle_t xQueue ) PRIVILEGED_FUNCTION;
+TaskHandle_t MPU_xQueueGetMutexHolderFromISR( QueueHandle_t xSemaphore ) PRIVILEGED_FUNCTION;
+QueueSetMemberHandle_t MPU_xQueueSelectFromSetFromISR( QueueSetHandle_t xQueueSet,
+                                                       TickType_t xBlockTimeTicks ) PRIVILEGED_FUNCTION;
+
 /* MPU versions of timers.h API functions. */
 TimerHandle_t MPU_xTimerCreate( const char * const pcTimerName,
                                 const TickType_t xTimerPeriodInTicks,
