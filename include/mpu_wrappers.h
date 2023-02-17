@@ -99,7 +99,6 @@
         #define vTaskAllocateMPURegions               MPU_vTaskAllocateMPURegions
         #define uxTaskPriorityGetFromISR              MPU_uxTaskPriorityGetFromISR
         #define xTaskResumeFromISR                    MPU_xTaskResumeFromISR
-        #define xTaskGetTickCountFromISR              MPU_xTaskGetTickCountFromISR
         #define xTaskGetApplicationTaskTagFromISR     MPU_xTaskGetApplicationTaskTagFromISR
         #define xTaskGenericNotifyFromISR             MPU_xTaskGenericNotifyFromISR
         #define vTaskGenericNotifyGiveFromISR         MPU_vTaskGenericNotifyGiveFromISR
