@@ -83,15 +83,18 @@
      */
     static void MPU_SetIndexFreeInHandlePool( int32_t lIndex ) PRIVILEGED_FUNCTION;
 
-    /**
-     * @brief Get the index at which a given kernel object handle is stored.
-     *
-     * @param xHandle The given kernel object handle.
-     *
-     * @return Index at which the kernel object is stored if it is a valid
-     *         handle, -1 otherwise.
-     */
-    static int32_t MPU_GetIndexForHandle( KernelObjectHandle_t xHandle ) PRIVILEGED_FUNCTION;
+    #if ( configUSE_QUEUE_SETS == 1 )
+
+        /**
+         * @brief Get the index at which a given kernel object handle is stored.
+         *
+         * @param xHandle The given kernel object handle.
+         *
+         * @return Index at which the kernel object is stored if it is a valid
+         *         handle, -1 otherwise.
+         */
+        static int32_t MPU_GetIndexForHandle( KernelObjectHandle_t xHandle ) PRIVILEGED_FUNCTION;
+    #endif
 
     /**
      * @brief Store the given kernel object handle at the given index in the handle pool.
@@ -114,23 +117,30 @@
     /*
      * Wrappers to keep all the casting in one place.
      */
-    #define MPU_StoreQueueHandleAtIndex( lIndex, xHandle )                  MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
-    #define MPU_GetQueueHandleAtIndex( lIndex )                             ( QueueHandle_t ) MPU_GetHandleAtIndex( lIndex )
+    #define MPU_StoreQueueHandleAtIndex( lIndex, xHandle )                 MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
+    #define MPU_GetQueueHandleAtIndex( lIndex )                            ( QueueHandle_t ) MPU_GetHandleAtIndex( lIndex )
 
     #if ( configUSE_QUEUE_SETS == 1 )
-        #define MPU_StoreQueueSetHandleAtIndex( lIndex, xHandle )           MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
-        #define MPU_GetQueueSetHandleAtIndex( lIndex )                      ( QueueSetHandle_t ) MPU_GetHandleAtIndex( lIndex )
-        #define MPU_StoreQueueSetMemberHandleAtIndex( lIndex, xHandle )     MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
-        #define MPU_GetQueueSetMemberHandleAtIndex( lIndex )                ( QueueSetHandle_t ) MPU_GetHandleAtIndex( lIndex )
-        #define MPU_GetIndexForQueueSetMemberHandle( xHandle )              MPU_GetIndexForHandle( ( KernelObjectHandle_t ) xHandle )
+        #define MPU_StoreQueueSetHandleAtIndex( lIndex, xHandle )          MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
+        #define MPU_GetQueueSetHandleAtIndex( lIndex )                     ( QueueSetHandle_t ) MPU_GetHandleAtIndex( lIndex )
+        #define MPU_StoreQueueSetMemberHandleAtIndex( lIndex, xHandle )    MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
+        #define MPU_GetQueueSetMemberHandleAtIndex( lIndex )               ( QueueSetHandle_t ) MPU_GetHandleAtIndex( lIndex )
+        #define MPU_GetIndexForQueueSetMemberHandle( xHandle )             MPU_GetIndexForHandle( ( KernelObjectHandle_t ) xHandle )
     #endif
 
     /*
      * Wrappers to keep all the casting in one place for Task APIs.
      */
-    #define MPU_StoreTaskHandleAtIndex( lIndex, xHandle )                   MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
-    #define MPU_GetTaskHandleAtIndex( lIndex )                              ( TaskHandle_t ) MPU_GetHandleAtIndex( lIndex )
-    #define MPU_GetIndexForTaskHandle( xHandle )                            MPU_GetIndexForHandle( ( KernelObjectHandle_t ) xHandle )
+    #define MPU_StoreTaskHandleAtIndex( lIndex, xHandle )    MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
+    #define MPU_GetTaskHandleAtIndex( lIndex )               ( TaskHandle_t ) MPU_GetHandleAtIndex( lIndex )
+    #define MPU_GetIndexForTaskHandle( xHandle )             MPU_GetIndexForHandle( ( KernelObjectHandle_t ) xHandle )
+
+    /*
+     * Wrappers to keep all the casting in one place for Event Group APIs.
+     */
+    #define MPU_StoreEventGroupHandleAtIndex( lIndex, xHandle )    MPU_StoreHandleAtIndex( lIndex, ( KernelObjectHandle_t ) xHandle )
+    #define MPU_GetEventGroupHandleAtIndex( lIndex )               ( EventGroupHandle_t ) MPU_GetHandleAtIndex( lIndex )
+    #define MPU_GetIndexForEventGroupHandle( xHandle )             MPU_GetIndexForHandle( ( KernelObjectHandle_t ) xHandle )
 
 /*-----------------------------------------------------------*/
 
@@ -179,27 +189,31 @@
     }
 /*-----------------------------------------------------------*/
 
-    static int32_t MPU_GetIndexForHandle( KernelObjectHandle_t xHandle ) /* PRIVILEGED_FUNCTION */
-    {
-        int32_t i, lIndex = -1;
+    #if ( configUSE_QUEUE_SETS == 1 )
 
-        configASSERT( xHandle != NULL );
-
-        for( i = 0; i < configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE; i++ )
+        static int32_t MPU_GetIndexForHandle( KernelObjectHandle_t xHandle ) /* PRIVILEGED_FUNCTION */
         {
-            if( xKernelObjectHandlePool[ i ] == xHandle )
+            int32_t i, lIndex = -1;
+
+            configASSERT( xHandle != NULL );
+
+            for( i = 0; i < configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE; i++ )
             {
-                lIndex = i;
-                break;
+                if( xKernelObjectHandlePool[ i ] == xHandle )
+                {
+                    lIndex = i;
+                    break;
+                }
             }
+
+            return lIndex;
         }
 
-        return lIndex;
-    }
+    #endif /* #if ( configUSE_QUEUE_SETS == 1 ) */
 /*-----------------------------------------------------------*/
 
     static void MPU_StoreHandleAtIndex( int32_t lIndex,
-                                        KernelObjectHandle_t xHandle ) /* PRIVILEGED_FUNCTION */
+                                        KernelObjectHandle_t xHandle )                 /* PRIVILEGED_FUNCTION */
     {
         configASSERT( ( lIndex >= 0 ) && ( lIndex < configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE ) );
         xKernelObjectHandlePool[ lIndex ] = xHandle;
@@ -214,7 +228,6 @@
 /*-----------------------------------------------------------*/
 
     #if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
-
         BaseType_t MPU_xTaskCreate( TaskFunction_t pvTaskCode,
                                     const char * const pcName,
                                     uint16_t usStackDepth,
@@ -238,9 +251,9 @@
 
                 if( lIndex != -1 )
                 {
-                    xReturn = xTaskCreate( pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, &( xInternalTaskHandle ) );
+                    xReturn = xTaskCreate( pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, &xInternalTaskHandle );
 
-                    if( ( xReturn == pdPASS ) && ( xInternalTaskHandle != NULL ) )
+                    if( xInternalTaskHandle != NULL )
                     {
                         MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
                         *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
@@ -262,9 +275,9 @@
 
                 if( lIndex != -1 )
                 {
-                    xReturn = xTaskCreate( pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, &( xInternalTaskHandle ) );
+                    xReturn = xTaskCreate( pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, &xInternalTaskHandle );
 
-                    if( ( xReturn == pdPASS ) && ( xInternalTaskHandle != NULL ) )
+                    if( xInternalTaskHandle != NULL )
                     {
                         MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
                         *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
@@ -278,12 +291,10 @@
 
             return xReturn;
         }
-
     #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
     #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
-
         TaskHandle_t MPU_xTaskCreateStatic( TaskFunction_t pxTaskCode,
                                             const char * const pcName,
                                             const uint32_t ulStackDepth,
@@ -348,29 +359,121 @@
 
             return xExternalTaskHandle;
         }
-
     #endif /* configSUPPORT_STATIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
-    #if ( INCLUDE_vTaskDelete == 1 )
+    #if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
-        void MPU_vTaskDelete( TaskHandle_t pxTaskToDelete ) /* FREERTOS_SYSTEM_CALL */
+        BaseType_t MPU_xTaskCreateRestricted( const TaskParameters_t * const pxTaskDefinition,
+                                              TaskHandle_t * pxCreatedTask ) /* FREERTOS_SYSTEM_CALL */
+        {
+            BaseType_t xReturn = pdFAIL;
+            int32_t lIndex;
+            TaskHandle_t xInternalTaskHandle = NULL;
+
+
+            lIndex = MPU_GetFreeIndexInHandlePool();
+
+            if( lIndex != -1 )
+            {
+                xReturn = xTaskCreateRestricted( pxTaskDefinition, &xInternalTaskHandle );
+
+                if( xInternalTaskHandle != NULL )
+                {
+                    MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
+                    *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
+                }
+                else
+                {
+                    MPU_SetIndexFreeInHandlePool( lIndex );
+                }
+            }
+
+            return xReturn;
+        }
+    #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
+/*-----------------------------------------------------------*/
+
+    #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
+        BaseType_t MPU_xTaskCreateRestrictedStatic( const TaskParameters_t * const pxTaskDefinition,
+                                                    TaskHandle_t * pxCreatedTask )  /* FREERTOS_SYSTEM_CALL */
+        {
+            BaseType_t xReturn = pdFAIL;
+            int32_t lIndex;
+            TaskHandle_t xInternalTaskHandle = NULL;
+
+
+            lIndex = MPU_GetFreeIndexInHandlePool();
+
+            if( lIndex != -1 )
+            {
+                xReturn = xTaskCreateRestrictedStatic( pxTaskDefinition, &xInternalTaskHandle );
+
+                if( xInternalTaskHandle != NULL )
+                {
+                    MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
+                    *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
+                }
+                else
+                {
+                    MPU_SetIndexFreeInHandlePool( lIndex );
+                }
+            }
+
+            return xReturn;
+        }
+    #endif /* configSUPPORT_STATIC_ALLOCATION */
+/*-----------------------------------------------------------*/
+
+    void MPU_vTaskAllocateMPURegions( TaskHandle_t xTaskToModify,
+                                      const MemoryRegion_t * const xRegions ) /* FREERTOS_SYSTEM_CALL */
+    {
+        if( xTaskToModify != NULL )
         {
             TaskHandle_t xInternalTaskHandle = NULL;
             int32_t lIndex;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            lIndex = ( int32_t ) xTaskToModify;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                vTaskAllocateMPURegions( xInternalTaskHandle, xRegions );
+            }
+        }
+        else
+        {
+            vTaskAllocateMPURegions( xTaskToModify, xRegions );
+        }
+    }
+/*-----------------------------------------------------------*/
 
-                if( pxTaskToDelete == NULL )
+    #if ( INCLUDE_vTaskDelete == 1 )
+        void MPU_vTaskDelete( TaskHandle_t pxTaskToDelete ) /* FREERTOS_SYSTEM_CALL */
+        {
+            if( pxTaskToDelete != NULL )
+            {
+                TaskHandle_t xInternalTaskHandle = NULL;
+                int32_t lIndex;
+
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xInternalTaskHandle = xTaskGetCurrentTaskHandle();
-                    lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
 
-                    vTaskDelete( xInternalTaskHandle );
-                    MPU_SetIndexFreeInHandlePool( lIndex );
+                    lIndex = ( int32_t ) pxTaskToDelete;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskDelete( xInternalTaskHandle );
+                        MPU_SetIndexFreeInHandlePool( lIndex - INDEX_OFFSET );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -383,43 +486,32 @@
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         vTaskDelete( xInternalTaskHandle );
                         MPU_SetIndexFreeInHandlePool( lIndex - INDEX_OFFSET );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( pxTaskToDelete == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xInternalTaskHandle = xTaskGetCurrentTaskHandle();
-                    lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
 
-                    vTaskDelete( xInternalTaskHandle );
-                    MPU_SetIndexFreeInHandlePool( lIndex );
+                    vTaskDelete( pxTaskToDelete );
+                    portMEMORY_BARRIER();
+
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) pxTaskToDelete;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        vTaskDelete( xInternalTaskHandle );
-                        MPU_SetIndexFreeInHandlePool( lIndex - INDEX_OFFSET );
-                    }
+                    vTaskDelete( pxTaskToDelete );
                 }
             }
         }
-
     #endif /* #if ( INCLUDE_vTaskDelete == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_xTaskDelayUntil == 1 )
-
         BaseType_t MPU_xTaskDelayUntil( TickType_t * const pxPreviousWakeTime,
                                         TickType_t xTimeIncrement ) /* FREERTOS_SYSTEM_CALL */
         {
@@ -443,26 +535,35 @@
 
             return xReturn;
         }
-
     #endif /* if ( INCLUDE_xTaskDelayUntil == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_xTaskAbortDelay == 1 )
-
         BaseType_t MPU_xTaskAbortDelay( TaskHandle_t xTask ) /* FREERTOS_SYSTEM_CALL */
         {
             BaseType_t xReturn = pdFAIL;
-            TaskHandle_t xInternalTaskHandle = NULL;
-            int32_t lIndex;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                TaskHandle_t xInternalTaskHandle = NULL;
+                int32_t lIndex;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = xTaskAbortDelay( xTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskAbortDelay( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -474,40 +575,34 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = xTaskAbortDelay( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = xTaskAbortDelay( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = xTaskAbortDelay( xInternalTaskHandle );
-                    }
+                    xReturn = xTaskAbortDelay( xTask );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( INCLUDE_xTaskAbortDelay == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_vTaskDelay == 1 )
-
         void MPU_vTaskDelay( TickType_t xTicksToDelay ) /* FREERTOS_SYSTEM_CALL */
         {
             if( portIS_PRIVILEGED() == pdFALSE )
@@ -526,26 +621,35 @@
                 vTaskDelay( xTicksToDelay );
             }
         }
-
     #endif /* if ( INCLUDE_vTaskDelay == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_uxTaskPriorityGet == 1 )
-
         UBaseType_t MPU_uxTaskPriorityGet( const TaskHandle_t pxTask ) /* FREERTOS_SYSTEM_CALL */
         {
-            UBaseType_t uxReturn = configMAX_PRIORITIES;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            UBaseType_t uxReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( pxTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    uxReturn = uxTaskPriorityGet( pxTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) pxTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        uxReturn = uxTaskPriorityGet( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -557,54 +661,58 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         uxReturn = uxTaskPriorityGet( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     uxReturn = uxTaskPriorityGet( pxTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) pxTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        uxReturn = uxTaskPriorityGet( xInternalTaskHandle );
-                    }
+                    uxReturn = uxTaskPriorityGet( pxTask );
                 }
             }
 
             return uxReturn;
         }
-
     #endif /* if ( INCLUDE_uxTaskPriorityGet == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_vTaskPrioritySet == 1 )
-
         void MPU_vTaskPrioritySet( TaskHandle_t pxTask,
                                    UBaseType_t uxNewPriority ) /* FREERTOS_SYSTEM_CALL */
         {
-            TaskHandle_t xInternalTaskHandle = NULL;
-            int32_t lIndex;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( pxTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                TaskHandle_t xInternalTaskHandle = NULL;
+                int32_t lIndex;
 
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    vTaskPrioritySet( pxTask, uxNewPriority );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) pxTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskPrioritySet( xInternalTaskHandle, uxNewPriority );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -616,52 +724,57 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         vTaskPrioritySet( xInternalTaskHandle, uxNewPriority );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     vTaskPrioritySet( pxTask, uxNewPriority );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) pxTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        vTaskPrioritySet( xInternalTaskHandle, uxNewPriority );
-                    }
+                    vTaskPrioritySet( pxTask, uxNewPriority );
                 }
             }
         }
-
     #endif /* if ( INCLUDE_vTaskPrioritySet == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_eTaskGetState == 1 )
-
         eTaskState MPU_eTaskGetState( TaskHandle_t pxTask ) /* FREERTOS_SYSTEM_CALL */
         {
             eTaskState eReturn = eInvalid;
-            TaskHandle_t xInternalTaskHandle = NULL;
-            int32_t lIndex;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( pxTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                TaskHandle_t xInternalTaskHandle = NULL;
+                int32_t lIndex;
 
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    eReturn = eTaskGetState( pxTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) pxTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        eReturn = eTaskGetState( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -673,56 +786,60 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         eReturn = eTaskGetState( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( pxTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     eReturn = eTaskGetState( pxTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) pxTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        eReturn = eTaskGetState( xInternalTaskHandle );
-                    }
+                    eReturn = eTaskGetState( pxTask );
                 }
             }
 
             return eReturn;
         }
-
     #endif /* if ( INCLUDE_eTaskGetState == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TRACE_FACILITY == 1 )
-
         void MPU_vTaskGetInfo( TaskHandle_t xTask,
                                TaskStatus_t * pxTaskStatus,
                                BaseType_t xGetFreeStackSpace,
                                eTaskState eState ) /* FREERTOS_SYSTEM_CALL */
         {
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    vTaskGetInfo( xTask, pxTaskStatus, xGetFreeStackSpace, eState );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskGetInfo( xInternalTaskHandle, pxTaskStatus, xGetFreeStackSpace, eState );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -734,83 +851,85 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         vTaskGetInfo( xInternalTaskHandle, pxTaskStatus, xGetFreeStackSpace, eState );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     vTaskGetInfo( xTask, pxTaskStatus, xGetFreeStackSpace, eState );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        vTaskGetInfo( xInternalTaskHandle, pxTaskStatus, xGetFreeStackSpace, eState );
-                    }
+                    vTaskGetInfo( xTask, pxTaskStatus, xGetFreeStackSpace, eState );
                 }
             }
         }
-
     #endif /* if ( configUSE_TRACE_FACILITY == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_xTaskGetIdleTaskHandle == 1 )
-
         TaskHandle_t MPU_xTaskGetIdleTaskHandle( void ) /* FREERTOS_SYSTEM_CALL */
         {
-            TaskHandle_t xIdleTaskHandle = NULL;
+            TaskHandle_t xInternalTaskHandle = NULL;
+            TaskHandle_t xSelectedIdleTaskHandle = NULL;
+            int32_t lIndex;
 
             if( portIS_PRIVILEGED() == pdFALSE )
             {
                 portRAISE_PRIVILEGE();
                 portMEMORY_BARRIER();
 
-                xIdleTaskHandle = xTaskGetIdleTaskHandle();
-                portMEMORY_BARRIER();
+                xInternalTaskHandle = xTaskGetIdleTaskHandle();
+
+                if( xInternalTaskHandle != NULL )
+                {
+                    lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
+                    xSelectedIdleTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
+                    portMEMORY_BARRIER();
+                }
 
                 portRESET_PRIVILEGE();
                 portMEMORY_BARRIER();
             }
             else
             {
-                xIdleTaskHandle = xTaskGetIdleTaskHandle();
+                xInternalTaskHandle = xTaskGetIdleTaskHandle();
+                lIndex = ( int32_t ) xInternalTaskHandle;
+
+                if( xInternalTaskHandle != NULL )
+                {
+                    lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
+                    xSelectedIdleTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
+                }
             }
 
-            return xIdleTaskHandle;
+            return xSelectedIdleTaskHandle;
         }
-
     #endif /* if ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_vTaskSuspend == 1 )
-
         void MPU_vTaskSuspend( TaskHandle_t pxTaskToSuspend ) /* FREERTOS_SYSTEM_CALL */
         {
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( pxTaskToSuspend != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( pxTaskToSuspend == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    vTaskSuspend( pxTaskToSuspend );
+                    portRAISE_PRIVILEGE();
                     portMEMORY_BARRIER();
-                }
-                else
-                {
+
                     lIndex = ( int32_t ) pxTaskToSuspend;
 
                     if( ( lIndex >= INDEX_OFFSET ) &&
@@ -820,16 +939,9 @@
                         vTaskSuspend( xInternalTaskHandle );
                         portMEMORY_BARRIER();
                     }
-                }
 
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
-            }
-            else
-            {
-                if( pxTaskToSuspend == NULL )
-                {
-                    vTaskSuspend( pxTaskToSuspend );
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
@@ -843,49 +955,85 @@
                     }
                 }
             }
-        }
+            else
+            {
+                if( portIS_PRIVILEGED() == pdFALSE )
+                {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
 
+                    vTaskSuspend( pxTaskToSuspend );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    vTaskSuspend( pxTaskToSuspend );
+                }
+            }
+        }
     #endif /* if ( INCLUDE_vTaskSuspend == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_vTaskSuspend == 1 )
-
         void MPU_vTaskResume( TaskHandle_t pxTaskToResume ) /* FREERTOS_SYSTEM_CALL */
         {
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( pxTaskToResume != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                lIndex = ( int32_t ) pxTaskToResume;
-
-                if( ( lIndex >= INDEX_OFFSET ) &&
-                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                    vTaskResume( xInternalTaskHandle );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) pxTaskToResume;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskResume( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
+                else
+                {
+                    lIndex = ( int32_t ) pxTaskToResume;
 
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskResume( xInternalTaskHandle );
+                    }
+                }
             }
             else
             {
-                lIndex = ( int32_t ) pxTaskToResume;
-
-                if( ( lIndex >= INDEX_OFFSET ) &&
-                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                    vTaskResume( xInternalTaskHandle );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    vTaskResume( pxTaskToResume );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    vTaskResume( pxTaskToResume );
                 }
             }
         }
-
     #endif /* if ( INCLUDE_vTaskSuspend == 1 ) */
 /*-----------------------------------------------------------*/
 
@@ -983,18 +1131,29 @@
 
     char * MPU_pcTaskGetName( TaskHandle_t xTaskToQuery ) /* FREERTOS_SYSTEM_CALL */
     {
-        char * pcReturn = NULL;
-        int32_t lIndex;
-        TaskHandle_t xInternalTaskHandle = NULL;
+        char * pcReturn;
 
-        if( portIS_PRIVILEGED() == pdFALSE )
+        if( xTaskToQuery != NULL )
         {
-            portRAISE_PRIVILEGE();
-            portMEMORY_BARRIER();
+            int32_t lIndex;
+            TaskHandle_t xInternalTaskHandle = NULL;
 
-            if( xTaskToQuery == NULL )
+            if( portIS_PRIVILEGED() == pdFALSE )
             {
-                pcReturn = pcTaskGetName( xTaskToQuery );
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
+                lIndex = ( int32_t ) xTaskToQuery;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    pcReturn = pcTaskGetName( xInternalTaskHandle );
+                    portMEMORY_BARRIER();
+                }
+
+                portRESET_PRIVILEGE();
                 portMEMORY_BARRIER();
             }
             else
@@ -1006,29 +1165,25 @@
                 {
                     xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                     pcReturn = pcTaskGetName( xInternalTaskHandle );
-                    portMEMORY_BARRIER();
                 }
             }
-
-            portRESET_PRIVILEGE();
-            portMEMORY_BARRIER();
         }
         else
         {
-            if( xTaskToQuery == NULL )
+            if( portIS_PRIVILEGED() == pdFALSE )
             {
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
                 pcReturn = pcTaskGetName( xTaskToQuery );
+                portMEMORY_BARRIER();
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
             }
             else
             {
-                lIndex = ( int32_t ) xTaskToQuery;
-
-                if( ( lIndex >= INDEX_OFFSET ) &&
-                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                {
-                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                    pcReturn = pcTaskGetName( xInternalTaskHandle );
-                }
+                pcReturn = pcTaskGetName( xTaskToQuery );
             }
         }
 
@@ -1037,11 +1192,10 @@
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_xTaskGetHandle == 1 )
-
         TaskHandle_t MPU_xTaskGetHandle( const char * pcNameToQuery ) /* FREERTOS_SYSTEM_CALL */
         {
             TaskHandle_t xInternalTaskHandle = NULL;
-            TaskHandle_t xExternalTaskHandle = NULL;
+            TaskHandle_t xSelectedTaskHandle = NULL;
             int32_t lIndex;
 
             if( portIS_PRIVILEGED() == pdFALSE )
@@ -1054,10 +1208,7 @@
                 if( xInternalTaskHandle != NULL )
                 {
                     lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
-                    if( lIndex != -1 )
-                    {
-                        xExternalTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                    }
+                    xSelectedTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
                     portMEMORY_BARRIER();
                 }
 
@@ -1071,21 +1222,16 @@
                 if( xInternalTaskHandle != NULL )
                 {
                     lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
-                    if( lIndex != -1 )
-                    {
-                        xExternalTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                    }
+                    xSelectedTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
                 }
             }
 
-            return xExternalTaskHandle;
+            return xSelectedTaskHandle;
         }
-
     #endif /* if ( INCLUDE_xTaskGetHandle == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( ( configUSE_TRACE_FACILITY == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) )
-
         void MPU_vTaskList( char * pcWriteBuffer ) /* FREERTOS_SYSTEM_CALL */
         {
             if( portIS_PRIVILEGED() == pdFALSE )
@@ -1104,12 +1250,10 @@
                 vTaskList( pcWriteBuffer );
             }
         }
-
     #endif /* if ( ( configUSE_TRACE_FACILITY == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) ) */
 /*-----------------------------------------------------------*/
 
     #if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) )
-
         void MPU_vTaskGetRunTimeStats( char * pcWriteBuffer ) /* FREERTOS_SYSTEM_CALL */
         {
             if( portIS_PRIVILEGED() == pdFALSE )
@@ -1128,26 +1272,34 @@
                 vTaskGetRunTimeStats( pcWriteBuffer );
             }
         }
-
     #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) && ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) ) */
 /*-----------------------------------------------------------*/
-
     #if ( configGENERATE_RUN_TIME_STATS == 1 )
-
         configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetRunTimeCounter( const TaskHandle_t xTask ) /*FREERTOS_SYSTEM_CALL */
         {
-            configRUN_TIME_COUNTER_TYPE xReturn = 0;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            configRUN_TIME_COUNTER_TYPE xReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lindex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = ulTaskGetRunTimeCounter( xTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = ulTaskGetRunTimeCounter( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1159,54 +1311,59 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = ulTaskGetRunTimeCounter( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = ulTaskGetRunTimeCounter( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = ulTaskGetRunTimeCounter( xInternalTaskHandle );
-                    }
+                    xReturn = ulTaskGetRunTimeCounter( xTask );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configGENERATE_RUN_TIME_STATS == 1 )
-
         configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetRunTimePercent( const TaskHandle_t xTask ) /*FREERTOS_SYSTEM_CALL */
         {
-            configRUN_TIME_COUNTER_TYPE xReturn = 0;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            configRUN_TIME_COUNTER_TYPE xReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lindex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = ulTaskGetRunTimePercent( xTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = ulTaskGetRunTimePercent( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1218,40 +1375,34 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = ulTaskGetRunTimePercent( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = ulTaskGetRunTimePercent( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = ulTaskGetRunTimePercent( xInternalTaskHandle );
-                    }
+                    xReturn = ulTaskGetRunTimePercent( xTask );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) )
-
         configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimePercent( void ) /* FREERTOS_SYSTEM_CALL */
         {
             configRUN_TIME_COUNTER_TYPE xReturn;
@@ -1274,12 +1425,10 @@
 
             return xReturn;
         }
-
     #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) ) */
 /*-----------------------------------------------------------*/
 
     #if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) )
-
         configRUN_TIME_COUNTER_TYPE MPU_ulTaskGetIdleRunTimeCounter( void ) /* FREERTOS_SYSTEM_CALL */
         {
             configRUN_TIME_COUNTER_TYPE xReturn;
@@ -1302,26 +1451,34 @@
 
             return xReturn;
         }
-
     #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_APPLICATION_TASK_TAG == 1 )
-
         void MPU_vTaskSetApplicationTaskTag( TaskHandle_t xTask,
                                              TaskHookFunction_t pxTagValue ) /* FREERTOS_SYSTEM_CALL */
         {
-            TaskHandle_t xInternalTaskHandle = NULL;
-            int32_t lIndex;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                TaskHandle_t xInternalTaskHandle = NULL;
+                int32_t lIndex;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    vTaskSetApplicationTaskTag( xTask, pxTagValue );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskSetApplicationTaskTag( xInternalTaskHandle, pxTagValue );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1333,52 +1490,57 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         vTaskSetApplicationTaskTag( xInternalTaskHandle, pxTagValue );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     vTaskSetApplicationTaskTag( xTask, pxTagValue );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        vTaskSetApplicationTaskTag( xInternalTaskHandle, pxTagValue );
-                    }
+                    vTaskSetApplicationTaskTag( xTask, pxTagValue );
                 }
             }
         }
-
     #endif /* if ( configUSE_APPLICATION_TASK_TAG == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_APPLICATION_TASK_TAG == 1 )
-
         TaskHookFunction_t MPU_xTaskGetApplicationTaskTag( TaskHandle_t xTask ) /* FREERTOS_SYSTEM_CALL */
         {
-            TaskHookFunction_t xReturn = NULL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            TaskHookFunction_t xReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = xTaskGetApplicationTaskTag( xTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskGetApplicationTaskTag( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1390,55 +1552,59 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = xTaskGetApplicationTaskTag( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = xTaskGetApplicationTaskTag( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = xTaskGetApplicationTaskTag( xInternalTaskHandle );
-                    }
+                    xReturn = xTaskGetApplicationTaskTag( xTask );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( configUSE_APPLICATION_TASK_TAG == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 )
-
         void MPU_vTaskSetThreadLocalStoragePointer( TaskHandle_t xTaskToSet,
                                                     BaseType_t xIndex,
                                                     void * pvValue ) /* FREERTOS_SYSTEM_CALL */
         {
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTaskToSet != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTaskToSet == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    vTaskSetThreadLocalStoragePointer( xTaskToSet, xIndex, pvValue );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTaskToSet;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        vTaskSetThreadLocalStoragePointer( xInternalTaskHandle, xIndex, pvValue );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1450,53 +1616,58 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         vTaskSetThreadLocalStoragePointer( xInternalTaskHandle, xIndex, pvValue );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTaskToSet == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     vTaskSetThreadLocalStoragePointer( xTaskToSet, xIndex, pvValue );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTaskToSet;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        vTaskSetThreadLocalStoragePointer( xInternalTaskHandle, xIndex, pvValue );
-                    }
+                    vTaskSetThreadLocalStoragePointer( xTaskToSet, xIndex, pvValue );
                 }
             }
         }
-
     #endif /* if ( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 )
-
         void * MPU_pvTaskGetThreadLocalStoragePointer( TaskHandle_t xTaskToQuery,
                                                        BaseType_t xIndex ) /* FREERTOS_SYSTEM_CALL */
         {
-            void * pvReturn = NULL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            void * pvReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTaskToQuery != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTaskToQuery == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    pvReturn = pvTaskGetThreadLocalStoragePointer( xTaskToQuery, xIndex );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTaskToQuery;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        pvReturn = pvTaskGetThreadLocalStoragePointer( xInternalTaskHandle, xIndex );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1508,55 +1679,60 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         pvReturn = pvTaskGetThreadLocalStoragePointer( xInternalTaskHandle, xIndex );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTaskToQuery == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    pvReturn = pvTaskGetThreadLocalStoragePointer( xTaskToQuery, xIndex );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    pvReturn = pvTaskSetThreadLocalStoragePointer( xTaskToSet, xIndex );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTaskToQuery;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        pvReturn = pvTaskGetThreadLocalStoragePointer( xInternalTaskHandle, xIndex );
-                    }
+                    pvReturn = pvTaskSetThreadLocalStoragePointer( xTaskToSet, xIndex );
                 }
             }
 
             return pvReturn;
         }
-
     #endif /* if ( configNUM_THREAD_LOCAL_STORAGE_POINTERS != 0 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_APPLICATION_TASK_TAG == 1 )
-
         BaseType_t MPU_xTaskCallApplicationTaskHook( TaskHandle_t xTask,
                                                      void * pvParameter ) /* FREERTOS_SYSTEM_CALL */
         {
             BaseType_t xReturn = pdFAIL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = xTaskCallApplicationTaskHook( xTask, pvParameter );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskCallApplicationTaskHook( xInternalTaskHandle, pvParameter );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1568,40 +1744,34 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = xTaskCallApplicationTaskHook( xInternalTaskHandle, pvParameter );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = xTaskCallApplicationTaskHook( xTask, pvParameter );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = xTaskCallApplicationTaskHook( xInternalTaskHandle, pvParameter );
-                    }
+                    xReturn = xTaskCallApplicationTaskHook( xTask, pvParameter );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( configUSE_APPLICATION_TASK_TAG == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TRACE_FACILITY == 1 )
-
         UBaseType_t MPU_uxTaskGetSystemState( TaskStatus_t * pxTaskStatusArray,
                                               UBaseType_t uxArraySize,
                                               configRUN_TIME_COUNTER_TYPE * pulTotalRunTime ) /* FREERTOS_SYSTEM_CALL */
@@ -1626,13 +1796,12 @@
 
             return uxReturn;
         }
-
     #endif /* if ( configUSE_TRACE_FACILITY == 1 ) */
 /*-----------------------------------------------------------*/
 
     BaseType_t MPU_xTaskCatchUpTicks( TickType_t xTicksToCatchUp ) /* FREERTOS_SYSTEM_CALL */
     {
-        BaseType_t xReturn = pdFALSE;
+        BaseType_t xReturn = pdFAIL;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
@@ -1655,21 +1824,31 @@
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_uxTaskGetStackHighWaterMark == 1 )
-
         UBaseType_t MPU_uxTaskGetStackHighWaterMark( TaskHandle_t xTask ) /* FREERTOS_SYSTEM_CALL */
         {
-            UBaseType_t uxReturn = 0;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            UBaseType_t uxReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    uxReturn = uxTaskGetStackHighWaterMark( xTask );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        uxReturn = uxTaskGetStackHighWaterMark( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -1681,58 +1860,48 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         uxReturn = uxTaskGetStackHighWaterMark( xInternalTaskHandle );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     uxReturn = uxTaskGetStackHighWaterMark( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        uxReturn = uxTaskGetStackHighWaterMark( xInternalTaskHandle );
-                    }
+                    uxReturn = uxTaskGetStackHighWaterMark( xTask );
                 }
             }
 
             return uxReturn;
         }
-
     #endif /* if ( INCLUDE_uxTaskGetStackHighWaterMark == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_uxTaskGetStackHighWaterMark2 == 1 )
-
         configSTACK_DEPTH_TYPE MPU_uxTaskGetStackHighWaterMark2( TaskHandle_t xTask ) /* FREERTOS_SYSTEM_CALL */
         {
-            configSTACK_DEPTH_TYPE uxReturn = 0;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            configSTACK_DEPTH_TYPE uxReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    uxReturn = uxTaskGetStackHighWaterMark2( xTask );
+                    portRAISE_PRIVILEGE();
                     portMEMORY_BARRIER();
-                }
-                else
-                {
+
                     lIndex = ( int32_t ) xTask;
 
                     if( ( lIndex >= INDEX_OFFSET ) &&
@@ -1742,16 +1911,9 @@
                         uxReturn = uxTaskGetStackHighWaterMark2( xInternalTaskHandle );
                         portMEMORY_BARRIER();
                     }
-                }
 
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
-            }
-            else
-            {
-                if( xTask == NULL )
-                {
-                    uxReturn = uxTaskGetStackHighWaterMark2( xTask );
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
@@ -1765,19 +1927,35 @@
                     }
                 }
             }
+            else
+            {
+                if( portIS_PRIVILEGED() == pdFALSE )
+                {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    uxReturn = uxTaskGetStackHighWaterMark2( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    uxReturn = uxTaskGetStackHighWaterMark2( xTask );
+                }
+            }
 
             return uxReturn;
         }
-
     #endif /* if ( INCLUDE_uxTaskGetStackHighWaterMark2 == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( ( INCLUDE_xTaskGetCurrentTaskHandle == 1 ) || ( configUSE_MUTEXES == 1 ) )
-
         TaskHandle_t MPU_xTaskGetCurrentTaskHandle( void ) /* FREERTOS_SYSTEM_CALL */
         {
             TaskHandle_t xInternalTaskHandle = NULL;
-            TaskHandle_t xExternalTaskHandle = NULL;
+            TaskHandle_t xCurrentTaskHandle = NULL;
             int32_t lIndex;
 
             if( portIS_PRIVILEGED() == pdFALSE )
@@ -1790,10 +1968,7 @@
                 if( xInternalTaskHandle != NULL )
                 {
                     lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
-                    if( lIndex != -1 )
-                    {
-                        xExternalTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                    }
+                    xCurrentTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
                     portMEMORY_BARRIER();
                 }
 
@@ -1807,24 +1982,19 @@
                 if( xInternalTaskHandle != NULL )
                 {
                     lIndex = MPU_GetIndexForTaskHandle( xInternalTaskHandle );
-                    if( lIndex != -1 )
-                    {
-                        xExternalTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                    }
+                    xCurrentTaskHandle = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
                 }
             }
 
-            return xExternalTaskHandle;
+            return xCurrentTaskHandle;
         }
-
     #endif /* if ( ( INCLUDE_xTaskGetCurrentTaskHandle == 1 ) || ( configUSE_MUTEXES == 1 ) ) */
 /*-----------------------------------------------------------*/
 
     #if ( INCLUDE_xTaskGetSchedulerState == 1 )
-
         BaseType_t MPU_xTaskGetSchedulerState( void ) /* FREERTOS_SYSTEM_CALL */
         {
-            BaseType_t xReturn = taskSCHEDULER_NOT_STARTED;
+            BaseType_t xReturn = pdFAIL;
 
             if( portIS_PRIVILEGED() == pdFALSE )
             {
@@ -1844,7 +2014,6 @@
 
             return xReturn;
         }
-
     #endif /* if ( INCLUDE_xTaskGetSchedulerState == 1 ) */
 /*-----------------------------------------------------------*/
 
@@ -1871,7 +2040,7 @@
     BaseType_t MPU_xTaskCheckForTimeOut( TimeOut_t * const pxTimeOut,
                                          TickType_t * const pxTicksToWait ) /* FREERTOS_SYSTEM_CALL */
     {
-        BaseType_t xReturn = pdFALSE;
+        BaseType_t xReturn = pdFAIL;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
@@ -1894,7 +2063,6 @@
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 )
-
         BaseType_t MPU_xTaskGenericNotify( TaskHandle_t xTaskToNotify,
                                            UBaseType_t uxIndexToNotify,
                                            uint32_t ulValue,
@@ -1904,6 +2072,7 @@
             BaseType_t xReturn = pdFAIL;
             int32_t lIndex;
             TaskHandle_t xInternalTaskHandle = NULL;
+
 
             if( portIS_PRIVILEGED() == pdFALSE )
             {
@@ -1937,12 +2106,10 @@
 
             return xReturn;
         }
-
     #endif /* if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 )
-
         BaseType_t MPU_xTaskGenericNotifyWait( UBaseType_t uxIndexToWaitOn,
                                                uint32_t ulBitsToClearOnEntry,
                                                uint32_t ulBitsToClearOnExit,
@@ -1969,12 +2136,10 @@
 
             return xReturn;
         }
-
     #endif /* if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 )
-
         uint32_t MPU_ulTaskGenericNotifyTake( UBaseType_t uxIndexToWaitOn,
                                               BaseType_t xClearCountOnExit,
                                               TickType_t xTicksToWait ) /* FREERTOS_SYSTEM_CALL */
@@ -1999,27 +2164,35 @@
 
             return ulReturn;
         }
-
     #endif /* if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 )
-
         BaseType_t MPU_xTaskGenericNotifyStateClear( TaskHandle_t xTask,
                                                      UBaseType_t uxIndexToClear ) /* FREERTOS_SYSTEM_CALL */
         {
             BaseType_t xReturn = pdFAIL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xReturn = xTaskGenericNotifyStateClear( xTask, uxIndexToClear );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskGenericNotifyStateClear( xInternalTaskHandle, uxIndexToClear );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -2031,56 +2204,61 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         xReturn = xTaskGenericNotifyStateClear( xInternalTaskHandle, uxIndexToClear );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     xReturn = xTaskGenericNotifyStateClear( xTask, uxIndexToClear );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        xReturn = xTaskGenericNotifyStateClear( xInternalTaskHandle, uxIndexToClear );
-                    }
+                    xReturn = xTaskGenericNotifyStateClear( xTask, uxIndexToClear );
                 }
             }
 
             return xReturn;
         }
-
     #endif /* if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
 /*-----------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 )
-
         uint32_t MPU_ulTaskGenericNotifyValueClear( TaskHandle_t xTask,
                                                     UBaseType_t uxIndexToClear,
                                                     uint32_t ulBitsToClear ) /* FREERTOS_SYSTEM_CALL */
         {
-            uint32_t ulReturn = 0;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            uint32_t ulReturn;
 
-            if( portIS_PRIVILEGED() == pdFALSE )
+            if( xTask != NULL )
             {
-                portRAISE_PRIVILEGE();
-                portMEMORY_BARRIER();
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
 
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    ulReturn = ulTaskGenericNotifyValueClear( xTask, uxIndexToClear, ulBitsToClear );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        ulReturn = ulTaskGenericNotifyValueClear( xInternalTaskHandle, uxIndexToClear, ulBitsToClear );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
                     portMEMORY_BARRIER();
                 }
                 else
@@ -2092,35 +2270,30 @@
                     {
                         xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
                         ulReturn = ulTaskGenericNotifyValueClear( xInternalTaskHandle, uxIndexToClear, ulBitsToClear );
-                        portMEMORY_BARRIER();
                     }
                 }
-
-                portRESET_PRIVILEGE();
-                portMEMORY_BARRIER();
             }
             else
             {
-                if( xTask == NULL )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
                     ulReturn = ulTaskGenericNotifyValueClear( xTask, uxIndexToClear, ulBitsToClear );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
                 }
                 else
                 {
-                    lIndex = ( int32_t ) xTask;
-
-                    if( ( lIndex >= INDEX_OFFSET ) &&
-                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-                    {
-                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                        ulReturn = ulTaskGenericNotifyValueClear( xInternalTaskHandle, uxIndexToClear, ulBitsToClear );
-                    }
+                    ulReturn = ulTaskGenericNotifyValueClear( xTask, uxIndexToClear, ulBitsToClear );
                 }
             }
 
             return ulReturn;
         }
-
     #endif /* if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
 /*-----------------------------------------------------------*/
 
@@ -2128,204 +2301,245 @@
  * the application can use opaque handles maintained in mpu_wrappers.c
  * with all the APIs. */
 /*-----------------------------------------------------------*/
-
-    #if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
-
-        BaseType_t MPU_xTaskCreateRestricted( const TaskParameters_t * const pxTaskDefinition,
-                                              TaskHandle_t * pxCreatedTask ) /* PRIVILEGED_FUNCTION */
-        {
-            BaseType_t xReturn = pdFAIL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-
-            lIndex = MPU_GetFreeIndexInHandlePool();
-
-            if( lIndex != -1 )
-            {
-                xReturn = xTaskCreateRestricted( pxTaskDefinition, &( xInternalTaskHandle ) );
-
-                if( ( xReturn == pdPASS ) && ( xInternalTaskHandle != NULL ) )
-                {
-                    MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
-                    *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                }
-                else
-                {
-                    MPU_SetIndexFreeInHandlePool( lIndex );
-                }
-            }
-
-            return xReturn;
-        }
-
-    #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
-/*-----------------------------------------------------------*/
-
-    #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
-
-        BaseType_t MPU_xTaskCreateRestrictedStatic( const TaskParameters_t * const pxTaskDefinition,
-                                                    TaskHandle_t * pxCreatedTask )  /* PRIVILEGED_FUNCTION */
-        {
-            BaseType_t xReturn = pdFAIL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            lIndex = MPU_GetFreeIndexInHandlePool();
-
-            if( lIndex != -1 )
-            {
-                xReturn = xTaskCreateRestrictedStatic( pxTaskDefinition, &( xInternalTaskHandle ) );
-
-                if( ( xReturn == pdPASS ) && ( xInternalTaskHandle != NULL ) )
-                {
-                    MPU_StoreTaskHandleAtIndex( lIndex, xInternalTaskHandle );
-                    *pxCreatedTask = ( TaskHandle_t ) ( lIndex + INDEX_OFFSET );
-                }
-                else
-                {
-                    MPU_SetIndexFreeInHandlePool( lIndex );
-                }
-            }
-
-            return xReturn;
-        }
-
-    #endif /* configSUPPORT_STATIC_ALLOCATION */
-/*-----------------------------------------------------------*/
-
-    void MPU_vTaskAllocateMPURegions( TaskHandle_t xTaskToModify,
-                                      const MemoryRegion_t * const xRegions ) /* PRIVILEGED_FUNCTION */
-    {
-        TaskHandle_t xInternalTaskHandle = NULL;
-        int32_t lIndex;
-
-        if( xTaskToModify == NULL )
-        {
-            vTaskAllocateMPURegions( xTaskToModify, xRegions );
-        }
-        else
-        {
-            lIndex = ( int32_t ) xTaskToModify;
-
-            if( ( lIndex >= INDEX_OFFSET ) &&
-                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
-            {
-                xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                vTaskAllocateMPURegions( xInternalTaskHandle, xRegions );
-            }
-        }
-    }
-/*-----------------------------------------------------------*/
-
     #if ( INCLUDE_uxTaskPriorityGet == 1 )
-
         UBaseType_t MPU_uxTaskPriorityGetFromISR( const TaskHandle_t xTask ) /* PRIVILEGED_FUNCTION */
         {
-            UBaseType_t uxReturn = configMAX_PRIORITIES;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
+            UBaseType_t uxReturn;
 
-            if( xTask == NULL )
+            if( xTask != NULL )
             {
-                uxReturn = uxTaskPriorityGetFromISR( xTask );
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
+
+                if( portIS_PRIVILEGED() == pdFALSE )
+                {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        uxReturn = uxTaskPriorityGetFromISR( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        uxReturn = uxTaskPriorityGetFromISR( xInternalTaskHandle );
+                    }
+                }
             }
             else
             {
-                lIndex = ( int32_t ) xTask;
-
-                if( ( lIndex >= INDEX_OFFSET ) &&
-                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                if( portIS_PRIVILEGED() == pdFALSE )
                 {
-                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                    uxReturn = uxTaskPriorityGetFromISR( xInternalTaskHandle );
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    uxReturn = uxTaskPriorityGetFromISR( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    uxReturn = uxTaskPriorityGetFromISR( xTask );
                 }
             }
 
             return uxReturn;
         }
-
     #endif /* #if ( INCLUDE_uxTaskPriorityGet == 1 ) */
 /*-----------------------------------------------------------*/
 
-    #if ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) )
-
-        BaseType_t MPU_xTaskResumeFromISR( TaskHandle_t xTaskToResume ) /* PRIVILEGED_FUNCTION */
+    #if ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) ) /* PRIVILEGED_FUNCTION */
+        BaseType_t MPU_xTaskResumeFromISR( TaskHandle_t xTaskToResume )
         {
             BaseType_t xReturn = pdFAIL;
             int32_t lIndex;
             TaskHandle_t xInternalTaskHandle = NULL;
 
-            lIndex = ( int32_t ) xTaskToResume;
-
-            if( ( lIndex >= INDEX_OFFSET ) &&
-                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            if( portIS_PRIVILEGED() == pdFALSE )
             {
-                xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                xReturn = xTaskResumeFromISR( xInternalTaskHandle );
-            }
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
 
-            return xReturn;
-        }
-
-    #endif /* #if ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) )*/
-/*---------------------------------------------------------------------------------------*/
-
-    #if ( configUSE_APPLICATION_TASK_TAG == 1 )
-
-        TaskHookFunction_t MPU_xTaskGetApplicationTaskTagFromISR( TaskHandle_t xTask ) /* PRIVILEGED_FUNCTION */
-        {
-            TaskHookFunction_t xReturn = NULL;
-            int32_t lIndex;
-            TaskHandle_t xInternalTaskHandle = NULL;
-
-            if( xTask == NULL )
-            {
-                xReturn = xTaskGetApplicationTaskTagFromISR( xTask );
-            }
-            else
-            {
-                lIndex = ( int32_t ) xTask;
+                lIndex = ( int32_t ) xTaskToResume;
 
                 if( ( lIndex >= INDEX_OFFSET ) &&
                     ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
                 {
                     xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                    xReturn = xTaskGetApplicationTaskTagFromISR( xInternalTaskHandle );
+                    xReturn = xTaskResumeFromISR( xInternalTaskHandle );
+                    portMEMORY_BARRIER();
+                }
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
+            }
+            else
+            {
+                lIndex = ( int32_t ) xTaskToResume;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    xReturn = xTaskResumeFromISR( xInternalTaskHandle );
                 }
             }
 
             return xReturn;
         }
-
-    #endif /* #if ( configUSE_APPLICATION_TASK_TAG == 1 ) */
+    #endif /* #if ( ( INCLUDE_xTaskResumeFromISR == 1 ) && ( INCLUDE_vTaskSuspend == 1 ) )*/
 /*---------------------------------------------------------------------------------------*/
-    #if ( configUSE_TASK_NOTIFICATIONS == 1 )
+
+    TickType_t MPU_xTaskGetTickCountFromISR( void ) /* PRIVILEGED_FUNCTION */
+    {
+        TickType_t xReturn;
+
+        if( portIS_PRIVILEGED() == pdFALSE )
+        {
+            portRAISE_PRIVILEGE();
+            portMEMORY_BARRIER();
+
+            xReturn = xTaskGetTickCountFromISR();
+            portMEMORY_BARRIER();
+
+            portRESET_PRIVILEGE();
+            portMEMORY_BARRIER();
+        }
+        else
+        {
+            xReturn = xTaskGetTickCountFromISR();
+        }
+
+        return xReturn;
+    }
+/*---------------------------------------------------------------------------------------*/
+
+    #if ( configUSE_APPLICATION_TASK_TAG == 1 ) /* PRIVILEGED_FUNCTION */
+        TaskHookFunction_t MPU_xTaskGetApplicationTaskTagFromISR( TaskHandle_t xTask )
+        {
+            TaskHookFunction_t xReturn;
+
+            if( xTask != NULL )
+            {
+                int32_t lIndex;
+                TaskHandle_t xInternalTaskHandle = NULL;
+
+                if( portIS_PRIVILEGED() == pdFALSE )
+                {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskGetApplicationTaskTagFromISR( xInternalTaskHandle );
+                        portMEMORY_BARRIER();
+                    }
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    lIndex = ( int32_t ) xTask;
+
+                    if( ( lIndex >= INDEX_OFFSET ) &&
+                        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                    {
+                        xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                        xReturn = xTaskGetApplicationTaskTagFromISR( xInternalTaskHandle );
+                    }
+                }
+            }
+            else
+            {
+                if( portIS_PRIVILEGED() == pdFALSE )
+                {
+                    portRAISE_PRIVILEGE();
+                    portMEMORY_BARRIER();
+
+                    xReturn = xTaskGetApplicationTaskTagFromISR( xTask );
+                    portMEMORY_BARRIER();
+
+                    portRESET_PRIVILEGE();
+                    portMEMORY_BARRIER();
+                }
+                else
+                {
+                    xReturn = xTaskGetApplicationTaskTagFromISR( xTask );
+                }
+            }
+
+            return xReturn;
+        }
+    #endif /*#if ( configUSE_APPLICATION_TASK_TAG == 1 )*/
+/*---------------------------------------------------------------------------------------*/
+    #if ( configUSE_TASK_NOTIFICATIONS == 1 ) /* PRIVILEGED_FUNCTION */
 
         BaseType_t MPU_xTaskGenericNotifyFromISR( TaskHandle_t xTaskToNotify,
                                                   UBaseType_t uxIndexToNotify,
                                                   uint32_t ulValue,
                                                   eNotifyAction eAction,
                                                   uint32_t * pulPreviousNotificationValue,
-                                                  BaseType_t * pxHigherPriorityTaskWoken ) /* PRIVILEGED_FUNCTION */
+                                                  BaseType_t * pxHigherPriorityTaskWoken )
         {
             BaseType_t xReturn = pdFAIL;
             int32_t lIndex;
             TaskHandle_t xInternalTaskHandle = NULL;
 
-            lIndex = ( int32_t ) xTaskToNotify;
-
-            if( ( lIndex >= INDEX_OFFSET ) &&
-                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            if( portIS_PRIVILEGED() == pdFALSE )
             {
-                xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                xReturn = xTaskGenericNotifyFromISR( xInternalTaskHandle, uxIndexToNotify, ulValue, eAction, pulPreviousNotificationValue, pxHigherPriorityTaskWoken );
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
+                lIndex = ( int32_t ) xTaskToNotify;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    xReturn = xTaskGenericNotifyFromISR( xInternalTaskHandle, uxIndexToNotify, ulValue, eAction, pulPreviousNotificationValue, pxHigherPriorityTaskWoken );
+                    portMEMORY_BARRIER();
+                }
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
+            }
+            else
+            {
+                lIndex = ( int32_t ) xTaskToNotify;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    xReturn = xTaskGenericNotifyFromISR( xInternalTaskHandle, uxIndexToNotify, ulValue, eAction, pulPreviousNotificationValue, pxHigherPriorityTaskWoken );
+                }
             }
 
             return xReturn;
         }
-
-    #endif /* #if ( configUSE_TASK_NOTIFICATIONS == 1 ) */
+    #endif /*#if ( configUSE_TASK_NOTIFICATIONS == 1 )*/
 /*---------------------------------------------------------------------------------------*/
 
     #if ( configUSE_TASK_NOTIFICATIONS == 1 ) /* PRIVILEGED_FUNCTION */
@@ -2337,13 +2551,34 @@
             int32_t lIndex;
             TaskHandle_t xInternalTaskHandle = NULL;
 
-            lIndex = ( int32_t ) xTaskToNotify;
-
-            if( ( lIndex >= INDEX_OFFSET ) &&
-                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            if( portIS_PRIVILEGED() == pdFALSE )
             {
-                xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
-                vTaskGenericNotifyGiveFromISR( xInternalTaskHandle, uxIndexToNotify, pxHigherPriorityTaskWoken );
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
+                lIndex = ( int32_t ) xTaskToNotify;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    vTaskGenericNotifyGiveFromISR( xInternalTaskHandle, uxIndexToNotify, pxHigherPriorityTaskWoken );
+                    portMEMORY_BARRIER();
+                }
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
+            }
+            else
+            {
+                lIndex = ( int32_t ) xTaskToNotify;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalTaskHandle = MPU_GetTaskHandleAtIndex( lIndex - INDEX_OFFSET );
+                    vTaskGenericNotifyGiveFromISR( xInternalTaskHandle, uxIndexToNotify, pxHigherPriorityTaskWoken );
+                }
             }
         }
     #endif /*#if ( configUSE_TASK_NOTIFICATIONS == 1 )*/
@@ -3975,25 +4210,56 @@
     #if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
         EventGroupHandle_t MPU_xEventGroupCreate( void ) /* FREERTOS_SYSTEM_CALL */
         {
-            EventGroupHandle_t xReturn;
+            EventGroupHandle_t xInternalEventGroupHandle = NULL;
+            EventGroupHandle_t xExternalEventGroupHandle = NULL;
+            int32_t lIndex;
 
             if( portIS_PRIVILEGED() == pdFALSE )
             {
                 portRAISE_PRIVILEGE();
                 portMEMORY_BARRIER();
 
-                xReturn = xEventGroupCreate();
-                portMEMORY_BARRIER();
+                lIndex = MPU_GetFreeIndexInHandlePool();
+
+                if( lIndex != -1)
+                {
+                    xInternalEventGroupHandle = xEventGroupCreate();
+                    if( xInternalEventGroupHandle != NULL )
+                    {
+                        MPU_StoreEventGroupHandleAtIndex( lIndex, xInternalEventGroupHandle );
+                        xExternalEventGroupHandle = ( EventGroupHandle_t )( lIndex + INDEX_OFFSET );
+                    }
+                    else
+                    {
+                        MPU_SetIndexFreeInHandlePool( lIndex );
+                    }
+
+                    portMEMORY_BARRIER();
+                }
 
                 portRESET_PRIVILEGE();
                 portMEMORY_BARRIER();
             }
             else
             {
-                xReturn = xEventGroupCreate();
+                lIndex = MPU_GetFreeIndexInHandlePool();
+
+                if( lIndex != -1)
+                {
+                    xInternalEventGroupHandle = xEventGroupCreate();
+                    if( xInternalEventGroupHandle != NULL )
+                    {
+                        MPU_StoreEventGroupHandleAtIndex( lIndex, xInternalEventGroupHandle );
+                        xExternalEventGroupHandle = ( EventGroupHandle_t )( lIndex + INDEX_OFFSET );
+                    }
+                    else
+                    {
+                        MPU_SetIndexFreeInHandlePool( lIndex );
+                    }
+                }
             }
 
-            return xReturn;
+            return xExternalEventGroupHandle;
         }
     #endif /* if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 ) */
 /*-----------------------------------------------------------*/
@@ -4001,25 +4267,55 @@
     #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
         EventGroupHandle_t MPU_xEventGroupCreateStatic( StaticEventGroup_t * pxEventGroupBuffer ) /* FREERTOS_SYSTEM_CALL */
         {
-            EventGroupHandle_t xReturn;
+            EventGroupHandle_t xInternalEventGroupHandle = NULL;
+            EventGroupHandle_t xExternalEventGroupHandle = NULL;
+            int32_t lIndex;
 
             if( portIS_PRIVILEGED() == pdFALSE )
             {
                 portRAISE_PRIVILEGE();
                 portMEMORY_BARRIER();
 
-                xReturn = xEventGroupCreateStatic( pxEventGroupBuffer );
-                portMEMORY_BARRIER();
+                lIndex = MPU_GetFreeIndexInHandlePool();
 
+                if( lIndex != -1)
+                {
+                    xInternalEventGroupHandle = xEventGroupCreateStatic( pxEventGroupBuffer );
+                    if( xInternalEventGroupHandle != NULL )
+                    {
+                        MPU_StoreEventGroupHandleAtIndex( lIndex, xInternalEventGroupHandle );
+                        xExternalEventGroupHandle = ( EventGroupHandle_t )( lIndex + INDEX_OFFSET );
+                    }
+                    else
+                    {
+                        MPU_SetIndexFreeInHandlePool( lIndex );
+                    }
+                    portMEMORY_BARRIER();
+                }
+                
                 portRESET_PRIVILEGE();
                 portMEMORY_BARRIER();
             }
             else
             {
-                xReturn = xEventGroupCreateStatic( pxEventGroupBuffer );
+                lIndex = MPU_GetFreeIndexInHandlePool();
+
+                if( lIndex != -1)
+                {
+                    xInternalEventGroupHandle = xEventGroupCreateStatic( pxEventGroupBuffer );
+                    if( xInternalEventGroupHandle != NULL )
+                    {
+                        MPU_StoreEventGroupHandleAtIndex( lIndex, xInternalEventGroupHandle );
+                        xExternalEventGroupHandle = ( EventGroupHandle_t )( lIndex + INDEX_OFFSET );
+                    }
+                    else
+                    {
+                        MPU_SetIndexFreeInHandlePool( lIndex );
+                    }
+                }
             }
 
-            return xReturn;
+            return xExternalEventGroupHandle;
         }
     #endif /* if ( configSUPPORT_STATIC_ALLOCATION == 1 ) */
 /*-----------------------------------------------------------*/
@@ -4031,21 +4327,36 @@
                                          TickType_t xTicksToWait ) /* FREERTOS_SYSTEM_CALL */
     {
         EventBits_t xReturn;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
             portRAISE_PRIVILEGE();
             portMEMORY_BARRIER();
 
-            xReturn = xEventGroupWaitBits( xEventGroup, uxBitsToWaitFor, xClearOnExit, xWaitForAllBits, xTicksToWait );
-            portMEMORY_BARRIER();
+            lIndex = ( int32_t ) xEventGroup;
 
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupWaitBits( xInternalEventGroupHandle, uxBitsToWaitFor, xClearOnExit, xWaitForAllBits, xTicksToWait );
+                portMEMORY_BARRIER();
+            }
             portRESET_PRIVILEGE();
             portMEMORY_BARRIER();
         }
         else
         {
-            xReturn = xEventGroupWaitBits( xEventGroup, uxBitsToWaitFor, xClearOnExit, xWaitForAllBits, xTicksToWait );
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupWaitBits( xInternalEventGroupHandle, uxBitsToWaitFor, xClearOnExit, xWaitForAllBits, xTicksToWait );
+            }
         }
 
         return xReturn;
@@ -4056,21 +4367,36 @@
                                           const EventBits_t uxBitsToClear ) /* FREERTOS_SYSTEM_CALL */
     {
         EventBits_t xReturn;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
             portRAISE_PRIVILEGE();
             portMEMORY_BARRIER();
 
-            xReturn = xEventGroupClearBits( xEventGroup, uxBitsToClear );
-            portMEMORY_BARRIER();
+            lIndex = ( int32_t ) xEventGroup;
 
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupClearBits( xInternalEventGroupHandle, uxBitsToClear );
+                portMEMORY_BARRIER();
+            }
             portRESET_PRIVILEGE();
             portMEMORY_BARRIER();
         }
         else
         {
-            xReturn = xEventGroupClearBits( xEventGroup, uxBitsToClear );
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupClearBits( xInternalEventGroupHandle, uxBitsToClear );
+            }
         }
 
         return xReturn;
@@ -4081,21 +4407,37 @@
                                         const EventBits_t uxBitsToSet ) /* FREERTOS_SYSTEM_CALL */
     {
         EventBits_t xReturn;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
             portRAISE_PRIVILEGE();
             portMEMORY_BARRIER();
 
-            xReturn = xEventGroupSetBits( xEventGroup, uxBitsToSet );
-            portMEMORY_BARRIER();
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupSetBits( xInternalEventGroupHandle, uxBitsToSet );
+                portMEMORY_BARRIER();
+            }
 
             portRESET_PRIVILEGE();
             portMEMORY_BARRIER();
         }
         else
         {
-            xReturn = xEventGroupSetBits( xEventGroup, uxBitsToSet );
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupSetBits( xInternalEventGroupHandle, uxBitsToSet );
+            }
         }
 
         return xReturn;
@@ -4108,21 +4450,37 @@
                                      TickType_t xTicksToWait ) /* FREERTOS_SYSTEM_CALL */
     {
         EventBits_t xReturn;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
 
         if( portIS_PRIVILEGED() == pdFALSE )
         {
             portRAISE_PRIVILEGE();
             portMEMORY_BARRIER();
 
-            xReturn = xEventGroupSync( xEventGroup, uxBitsToSet, uxBitsToWaitFor, xTicksToWait );
-            portMEMORY_BARRIER();
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupSync( xInternalEventGroupHandle, uxBitsToSet, uxBitsToWaitFor, xTicksToWait );
+                portMEMORY_BARRIER();
+            }
 
             portRESET_PRIVILEGE();
             portMEMORY_BARRIER();
         }
         else
         {
-            xReturn = xEventGroupSync( xEventGroup, uxBitsToSet, uxBitsToWaitFor, xTicksToWait );
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                xReturn = xEventGroupSync( xInternalEventGroupHandle, uxBitsToSet, uxBitsToWaitFor, xTicksToWait );
+            }
         }
 
         return xReturn;
@@ -4131,22 +4489,205 @@
 
     void MPU_vEventGroupDelete( EventGroupHandle_t xEventGroup ) /* FREERTOS_SYSTEM_CALL */
     {
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
+
         if( portIS_PRIVILEGED() == pdFALSE )
         {
             portRAISE_PRIVILEGE();
             portMEMORY_BARRIER();
 
-            vEventGroupDelete( xEventGroup );
-            portMEMORY_BARRIER();
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                vEventGroupDelete( xInternalEventGroupHandle );
+                MPU_SetIndexFreeInHandlePool( lIndex - INDEX_OFFSET );
+                portMEMORY_BARRIER();
+            }
 
             portRESET_PRIVILEGE();
             portMEMORY_BARRIER();
         }
         else
         {
-            vEventGroupDelete( xEventGroup );
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                vEventGroupDelete( xInternalEventGroupHandle );
+                MPU_SetIndexFreeInHandlePool( lIndex - INDEX_OFFSET );
+            }
         }
     }
+/*-----------------------------------------------------------*/
+#if ( configUSE_TRACE_FACILITY == 1 )
+    UBaseType_t MPU_uxEventGroupGetNumber( void * xEventGroup ) /* FREERTOS_SYSTEM_CALL */
+    {
+        UBaseType_t xReturn ;
+
+        if( xEventGroup != NULL )
+        {
+            EventGroupHandle_t xInternalEventGroupHandle = NULL;
+            int32_t lIndex;
+
+            if( portIS_PRIVILEGED() == pdFALSE )
+            {
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
+                lIndex = ( int32_t ) xEventGroup;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                    xReturn = uxEventGroupGetNumber( xInternalEventGroupHandle );
+                    portMEMORY_BARRIER();
+                }
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
+            }
+            else
+            {
+                lIndex = ( int32_t ) xEventGroup;
+
+                if( ( lIndex >= INDEX_OFFSET ) &&
+                    ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+                {
+                    xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                    xReturn = uxEventGroupGetNumber( xInternalEventGroupHandle );
+                }
+            }
+
+        }
+        else
+        {
+            if( portIS_PRIVILEGED() == pdFALSE )
+            {
+                portRAISE_PRIVILEGE();
+                portMEMORY_BARRIER();
+
+                xReturn = uxEventGroupGetNumber( xEventGroup );
+                portMEMORY_BARRIER();
+
+                portRESET_PRIVILEGE();
+                portMEMORY_BARRIER();
+            }
+            else
+            {
+                xReturn = uxEventGroupGetNumber( xEventGroup );
+            }
+        }
+
+        return xReturn;
+    }
+#endif /*( configUSE_TRACE_FACILITY == 1 )*/
+/*-----------------------------------------------------------*/
+#if ( configUSE_TRACE_FACILITY == 1 )
+    void MPU_vEventGroupSetNumber( void * xEventGroup,
+                               UBaseType_t uxEventGroupNumber ) /* FREERTOS_SYSTEM_CALL */
+    {
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
+
+        if( portIS_PRIVILEGED() == pdFALSE )
+        {
+            portRAISE_PRIVILEGE();
+            portMEMORY_BARRIER();
+
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                vEventGroupSetNumber( xInternalEventGroupHandle, uxEventGroupNumber);
+                portMEMORY_BARRIER();
+            }
+
+            portRESET_PRIVILEGE();
+            portMEMORY_BARRIER();
+        }
+        else
+        {
+            lIndex = ( int32_t ) xEventGroup;
+
+            if( ( lIndex >= INDEX_OFFSET ) &&
+                ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+            {
+                xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+                vEventGroupSetNumber( xInternalEventGroupHandle, uxEventGroupNumber);
+            }
+        }
+    }
+#endif /*( configUSE_TRACE_FACILITY == 1 )*/
+/*-----------------------------------------------------------*/
+#if ( ( configUSE_TRACE_FACILITY == 1 ) && ( INCLUDE_xTimerPendFunctionCall == 1 ) && ( configUSE_TIMERS == 1 ) )
+    BaseType_t MPU_xEventGroupClearBitsFromISR( EventGroupHandle_t xEventGroup,
+                                                const EventBits_t uxBitsToClear ) /*PRIVILEGED_FUNCTION*/
+    {
+        BaseType_t xReturn = pdFALSE;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
+
+        lIndex = ( int32_t ) xEventGroup;
+
+        if( ( lIndex >= INDEX_OFFSET ) &&
+            ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+        {
+            xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+            xReturn = xEventGroupClearBitsFromISR( xInternalEventGroupHandle, uxBitsToClear );
+        }
+        return xReturn;
+    }
+
+/*-----------------------------------------------------------*/
+
+    BaseType_t MPU_xEventGroupSetBitsFromISR( EventGroupHandle_t xEventGroup,
+                                            const EventBits_t uxBitsToSet,
+                                            BaseType_t * pxHigherPriorityTaskWoken ) /*PRIVILEGED_FUNCTION*/
+    {
+        BaseType_t xReturn = pdFALSE;
+        EventGroupHandle_t xInternalEventGroupHandle = NULL;
+        int32_t lIndex;
+
+        lIndex = ( int32_t ) xEventGroup;
+
+        if( ( lIndex >= INDEX_OFFSET ) &&
+            ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+        {
+            xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+            xReturn = xEventGroupSetBitsFromISR( xInternalEventGroupHandle, uxBitsToSet, pxHigherPriorityTaskWoken );
+        }
+        return xReturn;
+    }
+
+#endif /*( ( configUSE_TRACE_FACILITY == 1 ) && ( INCLUDE_xTimerPendFunctionCall == 1 ) && ( configUSE_TIMERS == 1 ) )*/
+
+/*-----------------------------------------------------------*/
+
+EventBits_t MPU_xEventGroupGetBitsFromISR( EventGroupHandle_t xEventGroup ) /*PRIVILEGED_FUNCTION*/
+{
+    EventBits_t xReturn;
+    EventGroupHandle_t xInternalEventGroupHandle = NULL;
+    int32_t lIndex;
+
+    lIndex = ( int32_t ) xEventGroup;
+
+    if( ( lIndex >= INDEX_OFFSET ) &&
+        ( lIndex < ( configPROTECTED_KERNEL_OBJECT_HANDLE_POOL_SIZE + INDEX_OFFSET ) ) )
+    {
+        xInternalEventGroupHandle = MPU_GetEventGroupHandleAtIndex( lIndex - INDEX_OFFSET );
+        xReturn = xEventGroupGetBitsFromISR( xInternalEventGroupHandle );
+    }
+    return xReturn;
+}
 /*-----------------------------------------------------------*/
 
     size_t MPU_xStreamBufferSend( StreamBufferHandle_t xStreamBuffer,
